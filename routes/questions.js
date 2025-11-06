@@ -49,17 +49,12 @@ router.get('/', async (req, res) => {
       const normalizedScore = maxPossibleScore > 0 ? Math.min(1, scoreSum / maxPossibleScore) : 0;
 
       return {
-        qId: parseInt(question.id),
+        id: parseInt(question.id),
         question: question.question,
         imageUrl: question.media || '',
         score: Math.round(normalizedScore * 100) / 100,
         tagsIds: question.tags,
         totalVotes,
-        // Per GET lista, restituisce arrays vuoti
-        all: [],
-        thirtyDays: [],
-        sixMonths: [],
-        oneYear: []
       };
     });
 
