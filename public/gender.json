@@ -1,0 +1,22 @@
+[
+  {
+    "id": "1",
+    "name": "Maschio",
+    "color": "#2196F3"
+  },
+  {
+    "id": "2",
+    "name": "Femmina",
+    "color": "#E91E63"
+  },
+  {
+    "id": "3",
+    "name": "Non binario",
+    "color": "#9C27B0"
+  },
+  {
+    "id": "4",
+    "name": "Non definito",
+    "color": "#FF9800"
+  }
+]
