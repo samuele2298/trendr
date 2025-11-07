@@ -8,192 +8,110 @@ const db = require('../db');
 // POST vota una question
 router.post('/', async (req, res, next) => {
   try {
-    const { questionId, user } = req.body;
+    const { questionId } = req.body;
+    let { user } = req.body;
+    const batch = req.body.votes; // optional array of votes
 
-    // Validazione input
-    if (!questionId) {
-      return res.status(400).json({
-        success: false,
-        error: 'questionId is required'
-      });
-    }
+    // Helper to process one vote item { questionId, user }
+    const processVote = (voteItem) => {
+      try {
+        const qId = voteItem.questionId;
+        let u = voteItem.user;
+        if (!qId) 
+          return { success: false, error: 'questionId is required' };
 
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        error: 'user is required'
-      });
-    }
+        // parse user if string
+        let uObj = null;
+        if (u) {
+          try { uObj = typeof u === 'string' ? JSON.parse(u) : u; } catch (e) { uObj = null; }
+        }
+        if (!uObj || !uObj.id) {
+          uObj = { id: `anon_${Date.now()}_${Math.floor(Math.random() * 10000)}` };
+        }
 
-    // Validazione struttura user
-    let userObj;
-    try {
-      userObj = typeof user === 'string' ? JSON.parse(user) : user;
-    } catch (e) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid user JSON format'
-      });
-    }
+        // Check question exists
+        const q = db.findById('questions', qId);
+        if (!q) 
+          return { success: false, error: 'Question not found', questionId: qId };
 
-    // Validazione campi obbligatori user
-    if (!userObj.id) {
-      return res.status(400).json({
-        success: false,
-        error: 'user.id is required'
-      });
-    }
-
-    // Verifica che la question esista
-    const question = db.findById('questions', questionId);
-    if (!question) {
-      return res.status(404).json({
-        success: false,
-        error: 'Question not found'
-      });
-    }
-
-    // Controlla se l'utente ha già votato per questa question
-    const existingVotes = db.find('votes', { questionId });
-    const userAlreadyVoted = existingVotes.some(vote => {
-      const voteUser = JSON.parse(vote.user);
-      return voteUser.id === userObj.id;
-    });
-
-    if (userAlreadyVoted) {
-      return res.status(409).json({
-        success: false,
-        error: 'User has already voted for this question'
-      });
-    }
-
-    // Validazione opzionale dei campi user se presenti
-    if (userObj.gender) {
-      const genders = db.read('gender');
-      const validGender = genders.find(g => g.id === userObj.gender);
-      if (!validGender) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid gender ID'
+        // Duplicate check for this question
+        const existing = db.find('votes', { questionId: qId });
+        const already = existing.some(v => {
+          try { const vu = JSON.parse(v.user); return vu.id === uObj.id; } catch (e) { return false; }
         });
-      }
-    }
+        if (already) 
+          return { success: false, error: 'User has already voted for this question', questionId: qId, userId: uObj.id };
 
-    if (userObj.interestsIds && Array.isArray(userObj.interestsIds)) {
-      const interests = db.read('interests');
-      const validInterests = userObj.interestsIds.every(interestId => 
-        interests.find(i => i.id === interestId)
-      );
-      if (!validInterests) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid interest IDs'
-        });
-      }
-    }
+        // Validate/clean optional fields
+        // gender
+        if (uObj.gender) {
+          const genders = db.read('gender');
+          const validGender = genders.find(g => g.id === uObj.gender);
+          if (!validGender) delete uObj.gender;
+        }
+        // interestsIds
+        if (uObj.interests) {
+          const interests = db.read('interests');
+          if (!Array.isArray(uObj.interests)) {
+            delete uObj.interests;
+          } else {
+            const filtered = uObj.interests.filter(id => interests.find(i => i.id === id));
+            if (filtered.length === 0) delete uObj.interests; else uObj.interests = filtered;
+          }
+        }
+        // sectorName
+        if (uObj.sector) {
+          const sectors = db.read('sectors');
+          const validSector = sectors.find(s => s.id === uObj.sector);
+          if (!validSector) delete uObj.sector;
+        }
+        // rangeAge
+        if (uObj.age) {
+          const ages = db.read('ages');
+          const validAge = ages.find(a => a.id === uObj.age || a.name === uObj.age);
+          if (!validAge) delete uObj.age;
+        }
 
-    if (userObj.sectorName) {
-      const sectors = db.read('sector');
-      const validSector = sectors.find(s => s.id === userObj.sectorName);
-      if (!validSector) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid sector ID'
-        });
-      }
-    }
+        // create new vote
+        const newV = { questionId: qId, user: JSON.stringify(uObj), time: new Date().toISOString() };
+        const ok = db.add('votes', newV);
+        if (!ok) 
+          return { success: false, error: 'Failed to save vote', questionId: qId };
 
-    // Crea il nuovo voto
-    const newVote = {
-      questionId,
-      user: JSON.stringify(userObj),
-      time: new Date().toISOString()
+        return { success: true, data: { questionId: qId, userId: uObj.id, timestamp: newV.time } };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
     };
 
-    // Aggiunge il voto
-    const success = db.add('votes', newVote);
-    
-    if (!success) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to save vote'
-      });
+    // Se abbiamo un batch, processalo
+    if (Array.isArray(batch)) {
+      const results = batch.map(item => processVote(item));
+      return res.status(200).json({ success: true, results });
     }
 
-    // Ritorna conferma
+    // Altrimenti processa come singolo voto usando la stessa logica
+    if (!questionId) {
+      return res.status(400).json({ success: false, error: 'questionId is required' });
+    }
+
+    const result = processVote({ questionId, user });
+    
+    if (!result.success) {
+      const statusCode = result.error.includes('not found') ? 404 : 
+                        result.error.includes('already voted') ? 409 : 400;
+      return res.status(statusCode).json(result);
+    }
+
+    // Risposta singola con formato originale per compatibilità
     res.status(200).json({ 
       success: true, 
       message: 'Vote recorded successfully',
-      data: {
-        questionId,
-        userId: userObj.id,
-        timestamp: newVote.time
-      }
+      data: result.data
     });
 
   } catch (error) {
     logger.error('Error in vote endpoint:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET total votes per una question
-router.get('/total/:qid', async (req, res, next) => {
-  try {
-    const qid = req.params.qid;
-    
-    const votes = db.find('votes', { questionId: qid });
-    const totalVotes = votes.length;
-
-    res.status(200).json({ 
-      success: true, 
-      data: { 
-        questionId: qid,
-        totalVotes 
-      }
-    });
-  } catch (error) {
-    logger.error('getTotalVotes:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET score per una question
-router.get('/score/:qid', async (req, res, next) => {
-  try {
-    const qid = req.params.qid;
-    
-    const votes = db.find('votes', { questionId: qid });
-    const totalVotes = votes.length;
-    
-    // Calcola score basato su numero di voti e recency
-    // Più voti recenti = score più alto
-    const now = new Date();
-    let score = 0;
-    
-    votes.forEach(vote => {
-      const voteTime = new Date(vote.time);
-      const hoursAgo = (now - voteTime) / (1000 * 60 * 60);
-      
-      // Score decresce con il tempo: voti recenti valgono di più
-      const timeDecay = Math.max(0, 1 - (hoursAgo / 24)); // Decade completamente dopo 24 ore
-      score += timeDecay;
-    });
-    
-    // Normalizza score tra 0 e 1
-    const maxPossibleScore = totalVotes;
-    const normalizedScore = maxPossibleScore > 0 ? Math.min(1, score / maxPossibleScore) : 0;
-
-    res.status(200).json({ 
-      success: true, 
-      data: { 
-        questionId: qid,
-        score: Math.round(normalizedScore * 100) / 100, // Arrotonda a 2 decimali
-        totalVotes
-      }
-    });
-  } catch (error) {
-    logger.error('getScore:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

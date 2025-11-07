@@ -52,7 +52,7 @@ class JSONDatabase {
     // Trova un elemento per ID
     findById(fileName, id) {
         const data = this.read(fileName);
-        return data.find(item => item.id === id);
+        return data.find(item => item.id == id);
     }
 
     // Aggiorna un elemento

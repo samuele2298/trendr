@@ -7,7 +7,7 @@ const db = require('../db');
 
 // Helper function per calcolare lo score di una question
 function calculateQuestionScore(questionId, votes) {
-  const questionVotes = votes.filter(vote => vote.questionId === questionId);
+  const questionVotes = votes.filter(vote => vote.questionId == questionId);
   const totalVotes = questionVotes.length;
   
   if (totalVotes === 0) return 0;
@@ -69,7 +69,7 @@ router.get('/trends', async (req, res, next) => {
     
     // Calcola score per ogni question
     const questionStats = questions.map(question => {
-      const questionVotes = weekVotes.filter(vote => vote.questionId === question.id);
+      const questionVotes = weekVotes.filter(vote => vote.questionId == question.id);
       const score = calculateQuestionScore(question.id, weekVotes);
       
       return {
@@ -79,14 +79,13 @@ router.get('/trends', async (req, res, next) => {
       };
     });
     
-    // Filtra solo questions con voti e ordina per score più estremi (vicini a 0 o 1)
+    // Filtra solo questions con voti e ordina per numero di voti (più votate prima)
+    // Tie-breaker: score più alto prima
     const trendingQuestions = questionStats
       .filter(item => item.votes > 0)
       .sort((a, b) => {
-        // Ordina per distanza da 0.5 (più estremo = più lontano da 0.5)
-        const extremeA = Math.abs(a.score - 0.5);
-        const extremeB = Math.abs(b.score - 0.5);
-        return extremeB - extremeA;
+        if (b.votes !== a.votes) return b.votes - a.votes;
+        return b.score - a.score;
       })
       .slice(0, 3);
     
@@ -132,7 +131,7 @@ router.get('/today', async (req, res, next) => {
     
     // Calcola score per ogni question
     const questionStats = questions.map(question => {
-      const questionVotes = todayVotes.filter(vote => vote.questionId === question.id);
+      const questionVotes = todayVotes.filter(vote => vote.questionId == question.id);
       const score = calculateQuestionScore(question.id, todayVotes);
       
       return {
@@ -142,14 +141,13 @@ router.get('/today', async (req, res, next) => {
       };
     });
     
-    // Filtra solo questions con voti oggi e ordina per risultati più estremi
+    // Filtra solo questions con voti oggi e ordina per numero di voti (più votate prima)
+    // Tie-breaker: score più alto prima
     const todayQuestions = questionStats
       .filter(item => item.votes > 0)
       .sort((a, b) => {
-        // Ordina per distanza da 0.5 (più estremo = più lontano da 0.5)
-        const extremeA = Math.abs(a.score - 0.5);
-        const extremeB = Math.abs(b.score - 0.5);
-        return extremeB - extremeA;
+        if (b.votes !== a.votes) return b.votes - a.votes;
+        return b.score - a.score;
       })
       .slice(0, 3);
     
