@@ -390,46 +390,51 @@ router.post('/:id', async (req, res) => {
       stats.push(genderStats);
     }
 
-    // 6. STATISTICHE PER INTERESSI (solo se user ha interestsIds)
-    if (user.interests && Array.isArray(user.interests) && user.interests.length > 0) {
-      const sameInterestsVotes = votesWithParsedUsers.filter(vote => {
-        if (!vote.parsedUser.interests) return false;
-
-        const userInterests = Array.isArray(vote.parsedUser.interests) 
-          ? vote.parsedUser.interests 
-          : [];
-          
-        // Controlla se ha almeno un interesse in comune
-        return user.interests.some(interest => 
-          userInterests.includes(interest)
-        );
+    // 6. STATISTICHE PER INTERESSI (per OGNI interesse con almeno 1 voto, ordina mettendo prima quelli dell'utente)
+    {
+      // Mappa: interestId -> lista voti che includono quell'interesse
+      const interestVotesMap = new Map();
+      votesWithParsedUsers.forEach(vote => {
+        const ivals = Array.isArray(vote.parsedUser?.interests) ? vote.parsedUser.interests : [];
+        ivals.forEach(rawId => {
+          const id = String(rawId);
+          if (!interestVotesMap.has(id)) interestVotesMap.set(id, []);
+          interestVotesMap.get(id).push(vote);
+        });
       });
 
-      // Se è passato un solo interesse (id), risolviamo il suo nome dal DB `interests`
-      let interestsTitle = "Tuoi Interessi";
-      let interestsDescription = "Utenti con interessi simili ai tuoi";
-      try {
-        if (user.interests.length === 1) {
-          const interestEntry = db.findById('interests', user.interests[0]);
-          if (interestEntry && (interestEntry.name || interestEntry.title)) {
-            const interestName = interestEntry.name || interestEntry.title;
-            interestsTitle = interestName;
-            interestsDescription = `Utenti interessati a ${interestName}`;
-          }
-        } else {
-          // Se sono più di uno, proviamo a risolvere alcuni nomi per la descrizione
-          const names = user.interests.slice(0,3).map(id => {
-            const e = db.findById('interests', id);
-            return e ? (e.name || e.title) : null;
-          }).filter(Boolean);
-          if (names.length > 0) {
-            interestsDescription = `Utenti interessati a ${names.join(', ')}`;
-          }
-        }
-      } catch (e) {}
+      // Considera solo interessi che hanno almeno 1 voto
+      const allInterestIds = Array.from(interestVotesMap.entries())
+        .filter(([, arr]) => arr && arr.length > 0)
+        .map(([id]) => id);
 
-      const interestsStats = calculateAllPeriods(sameInterestsVotes, interestsTitle, interestsDescription, "interests");
-      stats.push(interestsStats);
+      if (allInterestIds.length > 0) {
+        // Ordina: prima quelli dell'utente (se presenti), poi gli altri per numero di voti desc
+        const userInterests = Array.isArray(user.interests) ? user.interests.map(String) : [];
+        const userFirstIds = userInterests.filter(id => interestVotesMap.has(id));
+        const otherIds = allInterestIds.filter(id => !userFirstIds.includes(id));
+        otherIds.sort((a, b) => (interestVotesMap.get(b).length - interestVotesMap.get(a).length));
+        const ordered = [...new Set([...userFirstIds, ...otherIds])];
+
+        // Crea uno stats block per OGNI interesse
+        ordered.forEach(interestId => {
+          const filteredVotes = interestVotesMap.get(interestId) || [];
+          // resolve name from DB
+          let interestName = interestId;
+          try {
+            const entry = db.findById('interests', interestId);
+            if (entry && (entry.name || entry.title)) interestName = entry.name || entry.title;
+          } catch (e) {}
+
+          const perInterestStats = calculateAllPeriods(
+            filteredVotes,
+            interestName,
+            `Utenti interessati a ${interestName}`,
+            "interests"
+          );
+          stats.push(perInterestStats);
+        });
+      }
     }
 
     // Calcola score e totalVotes per la question

@@ -17,9 +17,9 @@
     "question": "Is working out at home as effective as going to the gym?",
     "tags": ["2", "3"]
   },
-  {
+      {
     "id": "4",
-    "media": "https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=800",
+    "media": "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=800",
     "question": "Is yoga better than running for mental health?",
     "tags": ["2", "3"]
   },
@@ -67,7 +67,7 @@
   },
   {
     "id": "12",
-    "media": "https://images.unsplash.com/photo-1587614295999-6c69e2b3d8a7?w=800",
+    "media": "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800",
     "question": "Is remote work more productive than office work?",
     "tags": ["10", "3"]
   },
@@ -109,7 +109,7 @@
   },
   {
     "id": "19",
-    "media": "https://images.unsplash.com/photo-1541580621-3f06e91f5cde?w=800",
+    "media": "https://images.unsplash.com/photo-1511376777868-611b54f68947?w=800",
     "question": "Has streaming ruined independent music?",
     "tags": ["8", "4"]
   },
