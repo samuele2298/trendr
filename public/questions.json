@@ -2,25 +2,25 @@
   {
     "id": "1",
     "media": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800",
-    "question": "Are organic foods really worth the extra price?",
+    "question": "Is organic food really worth the higher price?",
     "tags": ["1", "2"]
   },
   {
     "id": "2",
     "media": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800",
-    "question": "Does drinking coffee every day do more good than harm?",
+    "question": "Would you say daily coffee is healthy overall?",
     "tags": ["1", "3"]
   },
   {
     "id": "3",
     "media": "https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=800",
-    "question": "Is working out at home as effective as going to the gym?",
+    "question": "Do you think training at home gives the same results as the gym?",
     "tags": ["2", "3"]
   },
       {
     "id": "4",
     "media": "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=800",
-    "question": "Is yoga better than running for mental health?",
+    "question": "Does yoga help your mind more than running does?",
     "tags": ["2", "3"]
   },
   {
@@ -32,7 +32,7 @@
   {
     "id": "6",
     "media": "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=800",
-    "question": "Is posting every day on social media a form of addiction?",
+    "question": "Is scrolling every day on social media a form of addiction?",
     "tags": ["3", "4"]
   },
   {
