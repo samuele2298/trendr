@@ -27,32 +27,22 @@ router.get('/', async (req, res) => {
         tags.find(tag => tag.id === tagId)
       ).filter(tag => tag !== undefined);
 
-      // Calcola totalVotes e score per ogni question
+      // Calcola totalVotes e score per ogni question basato su consenso (positivi vs negativi)
       const votes = allVotes.filter(vote => vote.questionId == question.id);
       const totalVotes = votes.length;
       
-      // Calcola score normalizzato (0-1) basato su recency
-      const now = new Date();
-      let scoreSum = 0;
+      // Conta positivi (vote=1) e negativi (vote=0)
+      const positives = votes.filter(v => v.vote === 1).length;
+      const negatives = votes.filter(v => v.vote === 0).length;
       
-      votes.forEach(vote => {
-        const voteTime = new Date(vote.time);
-        const hoursAgo = (now - voteTime) / (1000 * 60 * 60);
-        
-        // Score decresce con il tempo: voti recenti valgono di più
-        const timeDecay = Math.max(0, 1 - (hoursAgo / 24)); // Decade completamente dopo 24 ore
-        scoreSum += timeDecay;
-      });
-      
-      // Normalizza score tra 0 e 1
-      const maxPossibleScore = totalVotes;
-      const normalizedScore = maxPossibleScore > 0 ? Math.min(1, scoreSum / maxPossibleScore) : 0;
+      // Score basato su consenso: ((positives - negatives) / total + 1) / 2 -> 0 to 1
+      const consensusScore = totalVotes > 0 ? ((positives - negatives) / totalVotes + 1) / 2 : 0;
 
       return {
         id: parseInt(question.id),
         question: question.question,
         media: question.media || '',
-        score: Math.round(normalizedScore * 100) / 100,
+        score: Math.round(consensusScore * 100) / 100,
         tags: question.tags,
         totalVotes,
       };
@@ -144,20 +134,15 @@ router.get('/search', async (req, res) => {
       const votes = allVotes.filter(vote => vote.questionId == question.id);
       const totalVotes = votes.length;
 
-      // compute recency-based score
-      let scoreSum = 0;
-      votes.forEach(vote => {
-        const voteTime = new Date(vote.time);
-        const hoursAgo = (now - voteTime) / (1000 * 60 * 60);
-        const timeDecay = Math.max(0, 1 - (hoursAgo / 24));
-        scoreSum += timeDecay;
-      });
-      const normalizedScore = totalVotes > 0 ? Math.min(1, scoreSum / totalVotes) : 0;
+      // compute consensus-based score
+      const positives = votes.filter(v => v.vote === 1).length;
+      const negatives = votes.filter(v => v.vote === 0).length;
+      const consensusScore = totalVotes > 0 ? ((positives - negatives) / totalVotes + 1) / 2 : 0;
 
       // Return the full question object plus computed fields
       return Object.assign({}, question, {
         id: parseInt(question.id),
-        score: Math.round(normalizedScore * 100) / 100,
+        score: Math.round(consensusScore * 100) / 100,
         totalVotes,
         tags: questionTags
       });
@@ -207,24 +192,16 @@ router.post('/:id', async (req, res) => {
         };
       }
 
-      // Calcola score basato su recency
-      const now = new Date();
-      let scoreSum = 0;
-      
-      votes.forEach(vote => {
-        const voteTime = new Date(vote.time);
-        const hoursAgo = (now - voteTime) / (1000 * 60 * 60);
-        const timeDecay = Math.max(0, 1 - (hoursAgo / 24));
-        scoreSum += timeDecay;
-      });
-      
-      const normalizedScore = totalVotes > 0 ? Math.min(1, scoreSum / totalVotes) : 0;
+      // Calcola score basato su consenso (positivi vs negativi)
+      const positives = votes.filter(v => v.vote === 1).length;
+      const negatives = votes.filter(v => v.vote === 0).length;
+      const consensusScore = ((positives - negatives) / totalVotes + 1) / 2;
       
       return {
         title,
         description,
         type,
-        score: Math.round(normalizedScore * 100) / 100,
+        score: Math.round(consensusScore * 100) / 100,
         votes: totalVotes
       };
     }
@@ -271,29 +248,24 @@ router.post('/:id', async (req, res) => {
     // Se non è stato passato un user o non ha ID, restituisce solo le statistiche globali
     if (!user || !user.id) {
       const questionVotes = allVotes.length;
-      const now = new Date();
-      let questionScoreSum = 0;
-      
-      allVotes.forEach(vote => {
-        const voteTime = new Date(vote.time);
-        const hoursAgo = (now - voteTime) / (1000 * 60 * 60);
-        const timeDecay = Math.max(0, 1 - (hoursAgo / 24));
-        questionScoreSum += timeDecay;
-      });
-      
-      const questionScore = questionVotes > 0 ? Math.min(1, questionScoreSum / questionVotes) : 0;
+      const positives = allVotes.filter(v => v.vote === 1).length;
+      const negatives = allVotes.filter(v => v.vote === 0).length;
+      const consensusScore = questionVotes > 0 ? ((positives - negatives) / questionVotes + 1) / 2 : 0;
+
+      // Filtra le statistiche che hanno meno di 10 voti totali
+      const filteredStats = stats.filter(stat => stat.all.votes >= 10);
 
       const questionStats = {
         qId: parseInt(question.id),
         question: question.question,
         imageUrl: question.media || '',
-        score: Math.round(questionScore * 100) / 100,
+        score: Math.round(consensusScore * 100) / 100,
         tagsIds: question.tags,
         totalVotes: questionVotes,
-        all: stats.map(stat => stat.all),
-        thirtyDays: stats.map(stat => stat.thirtyDays),
-        sixMonths: stats.map(stat => stat.sixMonths),
-        oneYear: stats.map(stat => stat.oneYear)
+        all: filteredStats.map(stat => stat.all),
+        thirtyDays: filteredStats.map(stat => stat.thirtyDays),
+        sixMonths: filteredStats.map(stat => stat.sixMonths),
+        oneYear: filteredStats.map(stat => stat.oneYear)
       };
 
       return res.status(200).json({ success: true, data: questionStats });
@@ -439,17 +411,9 @@ router.post('/:id', async (req, res) => {
 
     // Calcola score e totalVotes per la question
     const questionVotes = allVotes.length;
-    const now = new Date();
-    let questionScoreSum = 0;
-    
-    allVotes.forEach(vote => {
-      const voteTime = new Date(vote.time);
-      const hoursAgo = (now - voteTime) / (1000 * 60 * 60);
-      const timeDecay = Math.max(0, 1 - (hoursAgo / 24));
-      questionScoreSum += timeDecay;
-    });
-    
-    const questionScore = questionVotes > 0 ? Math.min(1, questionScoreSum / questionVotes) : 0;
+    const positives = allVotes.filter(v => v.vote === 1).length;
+    const negatives = allVotes.filter(v => v.vote === 0).length;
+    const consensusScore = questionVotes > 0 ? ((positives - negatives) / questionVotes + 1) / 2 : 0;
 
     // Aggiunge informazioni sui tags
     const tags = db.read('tags');
@@ -457,18 +421,21 @@ router.post('/:id', async (req, res) => {
       tags.find(tag => tag.id === tagId)
     ).filter(tag => tag !== undefined);
 
+    // Filtra le statistiche che hanno meno di 10 voti totali
+    const filteredStats = stats.filter(stat => stat.all.votes >= 10);
+
     const questionStats = {
       qId: parseInt(question.id),
       question: question.question,
       imageUrl: question.media || '',
-      score: Math.round(questionScore * 100) / 100,
+      score: Math.round(consensusScore * 100) / 100,
       tagsIds: question.tags,
       totalVotes: questionVotes,
       // Restituisce le prime statistiche disponibili per ogni periodo
-      all: stats.map(stat => stat.all),
-      thirtyDays: stats.map(stat => stat.thirtyDays),
-      sixMonths: stats.map(stat => stat.sixMonths),
-      oneYear: stats.map(stat => stat.oneYear)
+      all: filteredStats.map(stat => stat.all),
+      thirtyDays: filteredStats.map(stat => stat.thirtyDays),
+      sixMonths: filteredStats.map(stat => stat.sixMonths),
+      oneYear: filteredStats.map(stat => stat.oneYear)
     };
 
     res.status(200).json({ success: true, data: questionStats });

@@ -17,6 +17,7 @@ router.post('/', async (req, res, next) => {
       try {
         const qId = voteItem.questionId;
         let u = voteItem.user;
+        let vote = voteItem.vote;
         if (!qId) 
           return { success: false, error: 'questionId is required' };
 
@@ -73,7 +74,7 @@ router.post('/', async (req, res, next) => {
         }
 
         // create new vote
-        const newV = { questionId: qId, user: JSON.stringify(uObj), time: new Date().toISOString() };
+        const newV = { questionId: qId, user: JSON.stringify(uObj), time: new Date().toISOString(), vote: vote };
         const ok = db.add('votes', newV);
         if (!ok) 
           return { success: false, error: 'Failed to save vote', questionId: qId };

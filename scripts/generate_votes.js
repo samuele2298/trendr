@@ -5,9 +5,9 @@ const path = require('path');
 const db = require('../db');
 
 // Config
-const MIN_VOTES_PER_QUESTION = 40; // random lower bound
-const MAX_VOTES_PER_QUESTION = 50; // random upper bound
-const MAX_INTERESTS_PER_USER = 3;
+const MIN_VOTES_PER_QUESTION = 200; // random lower bound
+const MAX_VOTES_PER_QUESTION = 500; // random upper bound
+const MAX_INTERESTS_PER_USER = 5;
 const DAYS_SPAN = 365 * 2; // distribute votes across the last 2 years (730 days)
 
 function randInt(min, max) {
@@ -43,12 +43,6 @@ function randomRecentDate(daysSpan) {
 
 function makeUserId() {
   return `autogen_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
-}
-
-function backupVotesFile(srcPath) {
-  const bakPath = srcPath + '.bak.' + Date.now();
-  fs.copyFileSync(srcPath, bakPath);
-  return bakPath;
 }
 
 function main() {
@@ -111,7 +105,8 @@ function main() {
       const vote = {
         questionId: qid,
         user: JSON.stringify(user),
-        time: randomRecentDate(DAYS_SPAN)
+        time: randomRecentDate(DAYS_SPAN),
+        vote: Math.random() < 0.5 ? 0 : 1  // random 0 (negative) or 1 (positive)
       };
 
       votes.push(vote);
@@ -124,10 +119,7 @@ function main() {
     report.push({ qid, before: currentCount, added });
   });
 
-  // Backup and write
-  const bak = backupVotesFile(votesPath);
-  console.log('Backup written to', bak);
-
+  // Write
   const success = db.write('votes', votes);
   if (!success) {
     console.error('Failed to write votes.json');
