@@ -2,7 +2,14 @@
 
 const fs = require('fs');
 const path = require('path');
-const db = require('../db');
+const initOptions = {
+    error: (error, e) => {
+        console.log(error);
+    }
+};
+const pgp = require('pg-promise')(initOptions);
+const dbconnString = "postgresql://postgres:postgres@64.226.93.50:5432/trendr";
+const db = pgp({connectionString: dbconnString, application_name: process.env.APP_NAME, max: 5, ssl: {rejectUnauthorized: false}});
 
 // Config
 const MIN_VOTES_PER_QUESTION = 200; // random lower bound
@@ -45,91 +52,131 @@ function makeUserId() {
   return `autogen_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
 }
 
-function main() {
-  const publicDir = path.join(__dirname, '..', 'public');
-  const votesPath = path.join(publicDir, 'votes.json');
+async function main() {
+  try {
+    console.log('Reading data from database...');
 
-  console.log('Reading data from public/...');
-  const questions = db.read('questions') || [];
-  const interests = db.read('interests') || [];
-  const genders = db.read('gender') || [];
-  const ages = db.read('ages') || [];
-  const sectors = db.read('sectors') || [];
-  const cities = db.read('cities') || [];
+    // Read questions from database
+    const questions = await db.any('SELECT id, "Tquestion_question" question FROM "Tquestion"');
+    console.log(`Found ${questions.length} questions`);
 
-  let votes = db.read('votes') || [];
+    // Read interests from database (Tinterest table)
+    const interests = await db.any('SELECT id, "Tinterest_name" name FROM "Tinterest"');
+    console.log(`Found ${interests.length} interests`);
 
-  // Build quick sets for existing user-question pairs to avoid duplicates
-  const existingPairs = new Set();
-  votes.forEach(v => {
-    try {
-      const u = JSON.parse(v.user || '{}');
-      if (u && u.id) existingPairs.add(`${String(v.questionId)}::${String(u.id)}`);
-    } catch (e) {
-      // ignore
-    }
-  });
+    // Read sectors from database (Tsector table)
+    const sectors = await db.any('SELECT id, "Tsector_name" name FROM "Tsector"');
+    console.log(`Found ${sectors.length} sectors`);
 
-  const report = [];
+    // Read static data from JSON files
+    const publicDir = path.join(__dirname, '..', 'public');
+    const genders = JSON.parse(fs.readFileSync(path.join(publicDir, 'gender.json'), 'utf8'));
+    const ages = JSON.parse(fs.readFileSync(path.join(publicDir, 'ages.json'), 'utf8'));
+    const cities = JSON.parse(fs.readFileSync(path.join(publicDir, 'cities.json'), 'utf8'));
 
-  questions.forEach(question => {
-    const qid = Number(question.id);
-    const currentCount = votes.filter(v => Number(v.questionId) === qid).length;
-    let added = 0;
-    // pick a random number of votes to ADD this run (between MIN and MAX)
-    const toAdd = randInt(MIN_VOTES_PER_QUESTION, MAX_VOTES_PER_QUESTION);
+    console.log(`Found ${genders.length} genders, ${ages.length} ages, ${cities.length} cities`);
 
-    for (let i = 0; i < toAdd; i++) {
-      // generate a synthetic user
-      const user = {};
-      user.id = makeUserId();
-      // pick age/gender/interests/sector
-      if (ages.length > 0) user.age = pickRandom(ages).id;
-      if (genders.length > 0) user.gender = pickRandom(genders).id;
-      if (sectors.length > 0) user.sector = pickRandom(sectors).id;
-      if (interests.length > 0) {
-        // number of interests per user random between 1 and MAX_INTERESTS_PER_USER
-        const picked = pickMany(interests.map(i => i.id), Math.min(MAX_INTERESTS_PER_USER, interests.length));
-        user.interests = picked;
+    // Count existing autogen votes per question to avoid re-inserting duplicates
+    const existingVotes = await db.any(`
+      SELECT "Tvote_Tquestion_id", COUNT(*) as count
+      FROM "Tvote"
+      WHERE "Tvote_userid" LIKE 'autogen_%'
+      GROUP BY "Tvote_Tquestion_id"
+    `);
+    const existingCounts = {};
+    existingVotes.forEach(row => {
+      existingCounts[String(row.Tvote_Tquestion_id)] = parseInt(row.count, 10);
+    });
+
+    const report = [];
+    let totalAdded = 0;
+
+    for (const question of questions) {
+      const qid = question.id;
+      const currentCount = existingCounts[qid] || 0;
+      let added = 0;
+
+      // pick a random number of votes to ADD this run (between MIN and MAX)
+      const toAdd = randInt(MIN_VOTES_PER_QUESTION, MAX_VOTES_PER_QUESTION);
+
+      console.log(`Processing question ${qid}: current=${currentCount}, target to add=${toAdd}`);
+
+      for (let i = 0; i < toAdd; i++) {
+        // generate a synthetic user
+        const user = {};
+        user.id = makeUserId();
+
+        // pick age/gender/interests/sector
+        if (ages.length > 0) user.age = pickRandom(ages).id;
+        if (genders.length > 0) user.gender = pickRandom(genders).id;
+        if (sectors.length > 0) user.sector = pickRandom(sectors).id;
+        if (interests.length > 0) {
+          // number of interests per user random between 1 and MAX_INTERESTS_PER_USER
+          const picked = pickMany(interests.map(i => i.id), Math.min(MAX_INTERESTS_PER_USER, interests.length));
+          user.interests = picked;
+        }
+        // optionally add location (higher probability to include a city)
+        if (cities.length > 0 && Math.random() < 0.7) {
+          const c = pickRandom(cities);
+          // try id first, then nome/name
+          user.location = c.id || c.nome || c.name || '';
+        }
+
+        const voteValue = Math.random() < 0.5 ? 0 : 1; // random 0 (negative) or 1 (positive)
+        const voteTime = randomRecentDate(DAYS_SPAN);
+
+        try {
+          // Insert vote into database (use the same columns the app expects)
+          await db.none(`
+            INSERT INTO "Tvote" (
+              "Tvote_Tquestion_id", "Tvote_userid", "Tvote_vote", "Tvote_createtime",
+              "Tvote_userinterest", "Tvote_userage", "Tvote_usergender", "Tvote_usersector", "Tvote_userlocation"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          `, [
+            qid,
+            user.id,
+            voteValue,
+            voteTime,
+            user.interests ? JSON.stringify(user.interests) : null,
+            user.age || null,
+            user.gender || null,
+            user.sector || null,
+            user.location || null
+          ]);
+
+          added++;
+          totalAdded++;
+
+          // Progress logging every 100 votes
+          if (totalAdded % 100 === 0) {
+            console.log(`Added ${totalAdded} votes so far...`);
+          }
+
+        } catch (error) {
+          console.error(`Error inserting vote for question ${qid}, user ${user.id}:`, error.message);
+          // Continue with next vote
+        }
+
+        // Safety cap to avoid runaway in unexpected cases
+        if (added > toAdd * 3) break;
       }
-      // optionally add location (higher probability to include a city)
-      if (cities.length > 0 && Math.random() < 0.7) {
-        const c = pickRandom(cities);
-        // try id first, then nome/name
-        user.location = c.id || c.nome || c.name || '';
-      }
 
-      const pairKey = `${qid}::${user.id}`;
-      if (existingPairs.has(pairKey)) continue; // extremely unlikely but safe
-
-      const vote = {
-        questionId: qid,
-        user: JSON.stringify(user),
-        time: randomRecentDate(DAYS_SPAN),
-        vote: Math.random() < 0.5 ? 0 : 1  // random 0 (negative) or 1 (positive)
-      };
-
-      votes.push(vote);
-      existingPairs.add(pairKey);
-      added++;
-      // Safety cap to avoid runaway in unexpected cases
-      if (added > toAdd * 3) break;
+      report.push({ qid, before: currentCount, added });
     }
 
-    report.push({ qid, before: currentCount, added });
-  });
+    // Summary
+    console.log('\nGeneration complete. Summary per question:');
+    report.forEach(r => console.log(`Q ${r.qid}: before=${r.before} added=${r.added} total=${r.before + r.added}`));
+    console.log(`Total votes added: ${totalAdded}`);
 
-  // Write
-  const success = db.write('votes', votes);
-  if (!success) {
-    console.error('Failed to write votes.json');
+    // Final count
+    const finalCount = await db.one('SELECT COUNT(*) as total FROM "Tvote"');
+    console.log(`Total votes in database: ${finalCount.total}`);
+
+  } catch (error) {
+    console.error('Error in generate_votes:', error);
     process.exit(1);
   }
-
-  // Summary
-  console.log('Generation complete. Summary per question:');
-  report.forEach(r => console.log(`Q ${r.qid}: before=${r.before} added=${r.added} total=${r.before + r.added}`));
-  console.log('Total votes now:', votes.length);
 }
 
 if (require.main === module) main();

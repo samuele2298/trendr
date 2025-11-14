@@ -3,12 +3,17 @@
 const express = require('express');
 const router = express.Router();
 const logger = require('../logger');
-const db = require('../db');
+const fs = require('fs');
+const path = require('path');
 
 // GET tutte le fasce d'età
 router.get('/', async (req, res, next) => {
   try {
-    const ages = db.read('ages');
+    // Carica direttamente dal file JSON statico
+    const agesPath = path.join(__dirname, '../public/ages.json');
+    const agesData = fs.readFileSync(agesPath, 'utf8');
+    const ages = JSON.parse(agesData);
+    
     res.status(200).json({ success: true, data: ages });
   } catch (error) {
     logger.error('getAges:', error);

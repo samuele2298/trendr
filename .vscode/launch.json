@@ -15,7 +15,7 @@
                 "PORT": "3000",
                 "NODE_ENV": "development",
                 
-                "DB": "postgresql://trendr:postgres@64.226.93.50:5432/rate",
+                "DB": "postgresql://postgres:postgres@64.226.93.50:5432/trendr",
 
                 //Logger
                 "LOG_LEVEL": "debug",
@@ -38,7 +38,7 @@
                 "PORT": "4000",
                 "NODE_ENV": "production",
 
-                "DB": "postgresql://trendr:postgres@64.226.93.50:5432/rate",
+                "DB": "postgresql://postgres:postgres@64.226.93.50:5432/trendr",
 
                 //Logger
                 "LOG_LEVEL": "debug",

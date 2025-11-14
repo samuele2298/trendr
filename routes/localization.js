@@ -60,7 +60,7 @@ router.get('/:id', async (req, res) => {
     const city = cities.find(c => c.id == id);
 
     if (!city) {
-      return res.status(404).json({ success: false, error: 'Città non trovata' });
+      return res.status(404).json({ success: false, error: 'City not found' });
     }
 
     // Restituisci solo il nome

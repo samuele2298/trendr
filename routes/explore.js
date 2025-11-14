@@ -61,9 +61,30 @@ router.get('/trends', async (req, res, next) => {
   try {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
-    const questions = db.read('questions');
-    const allVotes = db.read('votes');
+
+    const queryQ = `
+      SELECT
+          q.id,
+          q."Tquestion_question" as question,
+          q."Tquestion_media" as media,
+          array_agg(qt."Ttag_id") as tags
+      FROM "Tquestion" q
+      LEFT JOIN "Tquestion_tag" qt ON q.id = qt."Tquestion_id"
+      GROUP BY q.id, q."Tquestion_question", q."Tquestion_media"
+      ORDER BY q.id;
+    `;
+    const questions = await db.any(queryQ);
+        
+    const queryV = `
+      SELECT
+          "Tvote_Tquestion_id" qid,
+          "Tvote_vote" vote,
+          "Tvote_createtime" time
+      FROM "Tvote"
+      WHERE "Tvote_createtime" >= $1
+      ORDER BY "Tvote_Tquestion_id";
+    `;
+    const allVotes = await db.any(queryV, [oneWeekAgo]);
     
     // Filtra voti dell'ultima settimana
     const weekVotes = allVotes.filter(vote => {
@@ -73,7 +94,7 @@ router.get('/trends', async (req, res, next) => {
     
     // Calcola score per ogni question
     const questionStats = questions.map(question => {
-      const questionVotes = weekVotes.filter(vote => vote.questionId == question.id);
+      const questionVotes = weekVotes.filter(vote => vote.qid == question.id);
       const score = calculateQuestionScore(question.id, weekVotes);
       
       return {
@@ -124,8 +145,29 @@ router.get('/today', async (req, res, next) => {
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
     
-    const questions = db.read('questions');
-    const allVotes = db.read('votes');
+    const queryQ = `
+      SELECT
+          q.id,
+          q."Tquestion_question" as question,
+          q."Tquestion_media" as media,
+          array_agg(qt."Ttag_id") as tags
+      FROM "Tquestion" q
+      LEFT JOIN "Tquestion_tag" qt ON q.id = qt."Tquestion_id"
+      GROUP BY q.id, q."Tquestion_question", q."Tquestion_media"
+      ORDER BY q.id;
+    `;
+    const questions = await db.any(queryQ);
+        
+    const queryV = `
+      SELECT
+          "Tvote_Tquestion_id" qid,
+          "Tvote_vote" vote,
+          "Tvote_createtime" time
+      FROM "Tvote"
+      WHERE "Tvote_createtime" >= $1
+      ORDER BY "Tvote_Tquestion_id";
+    `;
+    const allVotes = await db.any(queryV, [twentyFourHoursAgo]);
     
     // Filtra voti delle ultime 24h
     const todayVotes = allVotes.filter(vote => {
@@ -135,7 +177,7 @@ router.get('/today', async (req, res, next) => {
     
     // Calcola score per ogni question
     const questionStats = questions.map(question => {
-      const questionVotes = todayVotes.filter(vote => vote.questionId == question.id);
+      const questionVotes = todayVotes.filter(vote => vote.qid == question.id);
       const score = calculateQuestionScore(question.id, todayVotes);
       
       return {

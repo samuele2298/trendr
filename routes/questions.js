@@ -4,6 +4,8 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../logger');
 const db = require('../db');
+const fs = require('fs');
+const path = require('path');
 
 // GET tutte le questions con paginazione
 router.get('/', async (req, res) => {
@@ -12,15 +14,40 @@ router.get('/', async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
 
-    const allQuestions = db.read('questions');
+    const queryQ = `
+      SELECT
+          q.id,
+          q."Tquestion_question" question,
+          q."Tquestion_media" media,
+          array_agg(qt."Ttag_id") tags
+      FROM "Tquestion" q
+      LEFT JOIN "Tquestion_tag" qt ON q.id = qt."Tquestion_id"
+      GROUP BY q.id, q."Tquestion_question", q."Tquestion_media"
+      ORDER BY q.id;
+    `;
+    const allQuestions = await db.any(queryQ);
     const total = allQuestions.length;
-
-    // Applica paginazione
     const questions = allQuestions.slice(offset, offset + limit);
 
-    // Aggiunge informazioni sui tags per ogni question
-    const tags = db.read('tags');
-    const allVotes = db.read('votes');
+    const queryT = `
+      SELECT
+          id,
+          "Ttag_name" name,
+          "Ttag_color" color
+      FROM "Ttag" 
+      ORDER BY id;
+    `;
+    const tags = await db.any(queryT);
+    
+    const queryV = `
+      SELECT
+          "Tvote_Tquestion_id" qid,
+          "Tvote_vote" vote,
+          "Tvote_createtime" time
+      FROM "Tvote"
+      ORDER BY "Tvote_Tquestion_id";
+    `;
+    const allVotes = await db.any(queryV);
     
     const questionsWithTags = questions.map(question => {
       const questionTags = question.tags.map(tagId => 
@@ -28,7 +55,7 @@ router.get('/', async (req, res) => {
       ).filter(tag => tag !== undefined);
 
       // Calcola totalVotes e score per ogni question basato su consenso (positivi vs negativi)
-      const votes = allVotes.filter(vote => vote.questionId == question.id);
+      const votes = allVotes.filter(vote => vote.qid == question.id);
       const totalVotes = votes.length;
       
       // Conta positivi (vote=1) e negativi (vote=0)
@@ -82,11 +109,38 @@ router.get('/search', async (req, res) => {
       });
     }
 
-    const allQuestions = db.read('questions') || [];
+    const queryQ = `
+      SELECT
+          q.id,
+          q."Tquestion_question" as question,
+          q."Tquestion_media" as media,
+          array_agg(qt."Ttag_id") as tags
+      FROM "Tquestion" q
+      LEFT JOIN "Tquestion_tag" qt ON q.id = qt."Tquestion_id"
+      GROUP BY q.id, q."Tquestion_question", q."Tquestion_media"
+      ORDER BY q.id;
+    `;
+    const allQuestions = await db.any(queryQ);
 
-    // Preload votes and tags to compute totals/scores
-    const allVotes = db.read('votes') || [];
-    const tags = db.read('tags') || [];
+    const queryV = `
+      SELECT
+          v."Tvote_Tquestion_id" qid,
+          v."Tvote_vote" vote,
+          v."Tvote_createtime" time
+      FROM "Tvote" v
+      ORDER BY v."Tvote_Tquestion_id" ;
+    `;
+    const allVotes = await db.any(queryV);
+
+    const queryT = `
+      SELECT
+          id,
+          "Ttag_name" name,
+          "Ttag_color" color
+      FROM "Ttag" 
+      ORDER BY id;
+    `;
+    const tags = await db.any(queryT);
 
     let results = [];
 
@@ -125,13 +179,12 @@ router.get('/search', async (req, res) => {
     }
     
     // For each found question compute votes/score and include all stored fields
-    const now = new Date();
     const searchResults = results.map(question => {
       const questionTags = Array.isArray(question.tags) ? question.tags.map(tagId =>
         tags.find(tag => tag.id === tagId)
       ).filter(tag => tag !== undefined) : [];
 
-      const votes = allVotes.filter(vote => vote.questionId == question.id);
+      const votes = allVotes.filter(vote => vote.qid == question.id);
       const totalVotes = votes.length;
 
       // compute consensus-based score
@@ -171,13 +224,39 @@ router.post('/:id', async (req, res) => {
     const qid = req.params.id;
     const user  = req.body;
 
-    const question = db.findById('questions', qid);
+    const queryQ = `
+      SELECT
+          q.id,
+          q."Tquestion_question" as question,
+          q."Tquestion_media" as media,
+          array_agg(qt."Ttag_id") as tags
+      FROM "Tquestion" q
+      LEFT JOIN "Tquestion_tag" qt ON q.id = qt."Tquestion_id"
+      WHERE q.id = $1
+      GROUP BY q.id, q."Tquestion_question", q."Tquestion_media"
+      ORDER BY q.id;
+    `;
+    const question = await db.any(queryQ, [qid]).then(results => results[0]);
     if (!question) {
       return res.status(404).json({ success: false, error: 'Question not found' });
     }
 
-    const dbVotes = await db.find('votes');
-    const allVotes = dbVotes.filter(vote => vote.questionId == qid);
+    const queryV = `
+      SELECT
+          v."Tvote_Tquestion_id" qid,
+          v."Tvote_vote" vote,
+          v."Tvote_userid" uid ,
+          v."Tvote_usergender" gender,  
+          v."Tvote_userage" age,
+          v."Tvote_usersector" sector,
+          v."Tvote_userinterest" interest,
+          v."Tvote_userlocation" location,
+          v."Tvote_createtime" time
+      FROM "Tvote" v 
+      ORDER BY v."Tvote_Tquestion_id" ;
+    `;
+    const votes = await db.any(queryV);
+    const allVotes = votes.filter(vote => vote.qid == qid);
     
     // Helper function per calcolare statistiche
     function calculateStats(votes, title, description, type) {
@@ -229,20 +308,25 @@ router.post('/:id', async (req, res) => {
       };
     }
 
-    // Parse user data da ogni voto
-    const votesWithParsedUsers = allVotes.map(vote => {
-      try {
-        const parsedUser = JSON.parse(vote.user);
-        return { ...vote, parsedUser };
-      } catch (e) {
-        return { ...vote, parsedUser: { id: 'unknown' } };
+    // I dati utente sono già estratti come campi separati dalla query
+    const votesWithParsedUsers = allVotes.map(vote => ({
+      qid: vote.qid,
+      vote: vote.vote,
+      time: vote.time,
+      parsedUser: {
+        id: vote.uid,
+        gender: vote.gender,
+        age: vote.age,
+        sector: vote.sector,
+        interests: vote.interest,
+        location: vote.location
       }
-    });
+    }));
 
     const stats = [];
 
     // 1. STATISTICHE GLOBALI (sempre presenti)
-    const worldStats = calculateAllPeriods(votesWithParsedUsers, "Mondo", "Statistiche globali", "location");
+    const worldStats = calculateAllPeriods(votesWithParsedUsers, "World", "Global statistics", "location");
     stats.push(worldStats);
 
     // Se non è stato passato un user o non ha ID, restituisce solo le statistiche globali
@@ -281,10 +365,14 @@ router.post('/:id', async (req, res) => {
       let locationTitle = "Your Area";
       let locationDescription = "Users in your same geographic area";
       try {
-        const city = db.findById('cities', user.location);
-        if (city) {
+        const citiesPath = path.join(__dirname, '../public/cities.json');
+        const citiesData = fs.readFileSync(citiesPath, 'utf8');
+        const cities = JSON.parse(citiesData);
+
+        if (cities.length > 0) {
+          const city = cities[0];
           // city può avere campi `nome` o `name`
-          const cityName = city.nome || city.name || city.title || String(user.location);
+          const cityName = city.nome || city.name || String(user.location);
           locationTitle = cityName;
           locationDescription = `Users in the area of ${cityName}`;
         }
@@ -306,11 +394,17 @@ router.post('/:id', async (req, res) => {
       let ageTitle = "Your Age";
       let ageDescription = `Users in the age range ${user.age} years`;
       try {
-        const ageEntry = db.findById('ages', user.age);
-        if (ageEntry && (ageEntry.name || ageEntry.nome)) {
-          const ageName = ageEntry.name || ageEntry.nome;
-          ageTitle = `Range ${ageName}`;
-          ageDescription = `Users del range ${ageName}`;
+        const agesPath = path.join(__dirname, '../public/ages.json');
+        const agesData = fs.readFileSync(agesPath, 'utf8');
+        const ages = JSON.parse(agesData);
+
+        if (ages.length > 0) {
+          const ageEntry = ages[0];
+          if (ageEntry && ageEntry.name) {
+            const ageName = ageEntry.name;
+            ageTitle = `Range ${ageName}`;
+            ageDescription = `Users of range ${ageName}`;
+          }
         }
       } catch (e) {}
 
@@ -318,21 +412,24 @@ router.post('/:id', async (req, res) => {
       stats.push(ageStats);
     }
 
-    // 4. STATISTICHE PER SETTORE (solo se user ha sectorName)
-    if (user.sectorName && user.sectorName !== '') {
+    // 4. STATISTICHE PER SETTORE (solo se user ha sector)
+    if (user.sector && user.sector !== '') {
       const sameSectorVotes = votesWithParsedUsers.filter(vote => 
-        vote.parsedUser.sectorName === user.sectorName
+        vote.parsedUser.sector === user.sector
       );
 
-      // Se sectorName è un id, risolviamo dal DB `sectors`
+      // Se sector è un id, risolviamo dal DB `sectors`
       let sectorTitle = "Tuo Settore";
       let sectorDescription = "Utenti del tuo stesso settore lavorativo";
       try {
-        const sectorEntry = db.findById('sectors', user.sectorName);
-        if (sectorEntry && (sectorEntry.name || sectorEntry.title)) {
-          const sectorName = sectorEntry.name || sectorEntry.title;
-          sectorTitle = sectorName;
-          sectorDescription = `Users in the sector ${sectorName}`;
+        const sectors = await db.any('SELECT id, "Tsector_name" name FROM "Tsector" WHERE id = $1', [user.sector]);
+        if (sectors.length > 0) {
+          const sectorEntry = sectors[0];
+          if (sectorEntry && sectorEntry.name) {
+            const sectorName = sectorEntry.name;
+            sectorTitle = sectorName;
+            sectorDescription = `Users in the sector ${sectorName}`;
+          }
         }
       } catch (e) {}
 
@@ -350,11 +447,17 @@ router.post('/:id', async (req, res) => {
       let genderTitle = "Your Gender";
       let genderDescription = "Users of your same gender";
       try {
-        const genderEntry = db.findById('gender', user.gender);
-        if (genderEntry && (genderEntry.name || genderEntry.title)) {
-          const genderName = genderEntry.name || genderEntry.title;
-          genderTitle = genderName;
-          genderDescription = `Users of gender ${genderName}`;
+        const gendersPath = path.join(__dirname, '../public/gender.json');
+        const gendersData = fs.readFileSync(gendersPath, 'utf8');
+        const genders = JSON.parse(gendersData);
+
+        if (genders.length > 0) {
+          const genderEntry = genders[0];
+          if (genderEntry && genderEntry.name) {
+            const genderName = genderEntry.name;
+            genderTitle = genderName;
+            genderDescription = `Users of gender ${genderName}`;
+          }
         }
       } catch (e) {}
 
@@ -389,13 +492,16 @@ router.post('/:id', async (req, res) => {
         const ordered = [...new Set([...userFirstIds, ...otherIds])];
 
         // Crea uno stats block per OGNI interesse
-        ordered.forEach(interestId => {
+        for (const interestId of ordered) {
           const filteredVotes = interestVotesMap.get(interestId) || [];
           // resolve name from DB
           let interestName = interestId;
           try {
-            const entry = db.findById('interests', interestId);
-            if (entry && (entry.name || entry.title)) interestName = entry.name || entry.title;
+            const interests = await db.any('SELECT id, "Tinterest_name" name FROM "Tinterest" WHERE id = $1', [interestId]);
+            if (interests.length > 0) {
+              const entry = interests[0];
+              if (entry && (entry.name)) interestName = entry.name;
+            }
           } catch (e) {}
 
           const perInterestStats = calculateAllPeriods(
@@ -405,7 +511,7 @@ router.post('/:id', async (req, res) => {
             "interests"
           );
           stats.push(perInterestStats);
-        });
+        }
       }
     }
 
@@ -416,13 +522,13 @@ router.post('/:id', async (req, res) => {
     const consensusScore = questionVotes > 0 ? ((positives - negatives) / questionVotes + 1) / 2 : 0;
 
     // Aggiunge informazioni sui tags
-    const tags = db.read('tags');
+    const tags = await db.any('SELECT id, "Ttag_name" as name, "Ttag_color" as color FROM "Ttag"');
     const questionTags = question.tags.map(tagId => 
       tags.find(tag => tag.id === tagId)
     ).filter(tag => tag !== undefined);
 
     // Filtra le statistiche che hanno meno di 10 voti totali
-    const filteredStats = stats.filter(stat => stat.all.votes >= 10);
+    const filteredStats = stats.filter(stat => stat.all.votes >= 5);
 
     const questionStats = {
       qId: parseInt(question.id),

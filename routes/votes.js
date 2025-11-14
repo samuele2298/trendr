@@ -4,6 +4,8 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../logger');
 const db = require('../db');
+const fs = require('fs');
+const path = require('path');
 
 // POST vota una question
 router.post('/', async (req, res, next) => {
@@ -13,7 +15,7 @@ router.post('/', async (req, res, next) => {
     const batch = req.body.votes; // optional array of votes
 
     // Helper to process one vote item { questionId, user }
-    const processVote = (voteItem) => {
+    const processVote = async (voteItem) => {
       try {
         const qId = voteItem.questionId;
         let u = voteItem.user;
@@ -31,55 +33,57 @@ router.post('/', async (req, res, next) => {
         }
 
         // Check question exists
-        const q = db.findById('questions', qId);
-        if (!q) 
+        const questionQuery = `SELECT id FROM "Tquestion" WHERE id = $1`;
+        const questionExists = await db.oneOrNone(questionQuery, [qId.toString()]);
+        if (!questionExists) 
           return { success: false, error: 'Question not found', questionId: qId };
 
-        // Duplicate check for this question
-        const existing = db.find('votes', { questionId: qId });
-        const already = existing.some(v => {
-          try { const vu = JSON.parse(v.user); return vu.id === uObj.id; } catch (e) { return false; }
-        });
-        if (already) 
-          return { success: false, error: 'User has already voted for this question', questionId: qId, userId: uObj.id };
-
         // Validate/clean optional fields
-        // gender
+        // gender - carica da file JSON statico
         if (uObj.gender) {
-          const genders = db.read('gender');
-          const validGender = genders.find(g => g.id === uObj.gender);
+          const gendersPath = path.join(__dirname, '../public/gender.json');
+          const gendersData = fs.readFileSync(gendersPath, 'utf8');
+          const genders = JSON.parse(gendersData);
+          const validGender = genders.find(g => g.id == uObj.gender);
           if (!validGender) delete uObj.gender;
         }
-        // interestsIds
-        if (uObj.interests) {
-          const interests = db.read('interests');
-          if (!Array.isArray(uObj.interests)) {
-            delete uObj.interests;
-          } else {
-            const filtered = uObj.interests.filter(id => interests.find(i => i.id === id));
-            if (filtered.length === 0) delete uObj.interests; else uObj.interests = filtered;
-          }
-        }
-        // sectorName
+        
+        // sector - carica da tabella sectors
         if (uObj.sector) {
-          const sectors = db.read('sectors');
-          const validSector = sectors.find(s => s.id === uObj.sector);
+          const sectorQuery = `SELECT id FROM "Tsector" WHERE id = $1`;
+          const validSector = await db.oneOrNone(sectorQuery, [uObj.sector]);
           if (!validSector) delete uObj.sector;
         }
-        // rangeAge
+        
+        // age - carica da file JSON statico
         if (uObj.age) {
-          const ages = db.read('ages');
-          const validAge = ages.find(a => a.id === uObj.age || a.name === uObj.age);
+          const agesPath = path.join(__dirname, '../public/ages.json');
+          const agesData = fs.readFileSync(agesPath, 'utf8');
+          const ages = JSON.parse(agesData);
+          const validAge = ages.find(a => a.id == uObj.age || a.name === uObj.age);
           if (!validAge) delete uObj.age;
         }
 
         // create new vote
-        const newV = { questionId: qId, user: JSON.stringify(uObj), time: new Date().toISOString(), vote: vote };
-        const ok = db.add('votes', newV);
-        if (!ok) 
-          return { success: false, error: 'Failed to save vote', questionId: qId };
-
-        return { success: true, data: { questionId: qId, userId: uObj.id, timestamp: newV.time } };
+        const insertQuery = `
+          INSERT INTO "Tvote" (
+            "Tvote_Tquestion_id", "Tvote_userid", "Tvote_vote", "Tvote_createtime",
+            "Tvote_userinterest", "Tvote_userage", "Tvote_usergender", "Tvote_usersector", "Tvote_userlocation"
+          ) VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8)
+          RETURNING "Tvote_createtime"
+        `;
+        const result = await db.one(insertQuery, [
+          qId,
+          uObj.id,
+          vote,
+          JSON.stringify(uObj.interests) || null,
+          uObj.age || null,
+          uObj.gender || null,
+          uObj.sector || null,
+          uObj.location || null
+        ]);
+        
+        return { success: true, data: { questionId: qId, userId: uObj.id, timestamp: result.Tvote_createtime } };
       } catch (err) {
         return { success: false, error: err.message };
       }
@@ -87,7 +91,7 @@ router.post('/', async (req, res, next) => {
 
     // Se abbiamo un batch, processalo
     if (Array.isArray(batch)) {
-      const results = batch.map(item => processVote(item));
+      const results = await Promise.all(batch.map(item => processVote(item)));
       return res.status(200).json({ success: true, results });
     }
 
@@ -96,7 +100,7 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ success: false, error: 'questionId is required' });
     }
 
-    const result = processVote({ questionId, user });
+    const result = await processVote({ questionId, user });
     
     if (!result.success) {
       const statusCode = result.error.includes('not found') ? 404 : 

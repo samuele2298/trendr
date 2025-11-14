@@ -8,7 +8,16 @@ const db = require('../db');
 // GET tutti gli interests
 router.get('/', async (req, res) => {
   try {
-    const interests = db.read('interests');
+    const query = `
+      SELECT
+          id,
+          "Tinterest_name" name,
+          "Tinterest_color" color
+      FROM "Tinterest" 
+      ORDER BY id;
+    `;
+    const interests = await db.any(query);
+
     res.status(200).json({ success: true, data: interests });
   } catch (error) {
     logger.error('getInterests:', error);
