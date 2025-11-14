@@ -1,0 +1,309 @@
+[
+  {
+    "id": "1",
+    "media": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800",
+    "question": "Is organic food really worth the higher price?",
+    "tags": ["1", "2"]
+  },
+  {
+    "id": "2",
+    "media": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800",
+    "question": "Would you say daily coffee is healthy overall?",
+    "tags": ["1", "3"]
+  },
+  {
+    "id": "3",
+    "media": "https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=800",
+    "question": "Do you think training at home gives the same results as the gym?",
+    "tags": ["2", "3"]
+  },
+      {
+    "id": "4",
+    "media": "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=800",
+    "question": "Does yoga help your mind more than running does?",
+    "tags": ["2", "3"]
+  },
+  {
+    "id": "5",
+    "media": "https://images.unsplash.com/photo-1553456558-aff63285bdd1?w=800",
+    "question": "Do social media make you happier or more stressed?",
+    "tags": ["3", "4"]
+  },
+  {
+    "id": "6",
+    "media": "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=800",
+    "question": "Is scrolling every day on social media a form of addiction?",
+    "tags": ["3", "4"]
+  },
+  {
+    "id": "7",
+    "media": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800",
+    "question": "Is climate change the biggest emergency of our time?",
+    "tags": ["4", "7"]
+  },
+  {
+    "id": "8",
+    "media": "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800",
+    "question": "Will artificial intelligence replace many jobs soon?",
+    "tags": ["5", "10"]
+  },
+  {
+    "id": "9",
+    "media": "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800",
+    "question": "Will blockchain really change the finance world?",
+    "tags": ["5", "10"]
+  },
+  {
+    "id": "10",
+    "media": "https://images.unsplash.com/photo-1518432031352-d6fc5c10da5a?w=800",
+    "question": "Do smartwatches actually improve your health?",
+    "tags": ["5", "2"]
+  },
+  {
+    "id": "11",
+    "media": "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=800",
+    "question": "Will cryptocurrencies replace traditional money?",
+    "tags": ["5", "10"]
+  },
+  {
+    "id": "12",
+    "media": "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800",
+    "question": "Is remote work more productive than office work?",
+    "tags": ["10", "3"]
+  },
+  {
+    "id": "13",
+    "media": "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=800",
+    "question": "Are tech startups overrated?",
+    "tags": ["10", "5"]
+  },
+  {
+    "id": "14",
+    "media": "https://images.unsplash.com/photo-1556740749-887f6717d7e4?w=800",
+    "question": "Is working out every day actually healthy for your body?",
+    "tags": ["2", "6"]
+  },
+  {
+    "id": "15",
+    "media": "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800",
+    "question": "Do team sports teach more than school does?",
+    "tags": ["6", "3"]
+  },
+  {
+    "id": "16",
+    "media": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800",
+    "question": "Is traveling alone better than traveling in a group?",
+    "tags": ["7", "3"]
+  },
+  {
+    "id": "17",
+    "media": "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800",
+    "question": "Are hidden destinations more exciting than famous ones?",
+    "tags": ["7", "4"]
+  },
+  {
+    "id": "18",
+    "media": "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800",
+    "question": "Can virtual concerts replace live ones?",
+    "tags": ["8", "5"]
+  },
+  {
+    "id": "19",
+    "media": "https://images.unsplash.com/photo-1511376777868-611b54f68947?w=800",
+    "question": "Has streaming ruined independent music?",
+    "tags": ["8", "4"]
+  },
+  {
+    "id": "20",
+    "media": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800",
+    "question": "Is sustainable fashion just a passing trend?",
+    "tags": ["9", "4"]
+  },
+  {
+    "id": "21",
+    "media": "https://images.unsplash.com/photo-1606053929013-311c13f97b5f?w=800",
+    "question": "Should fast fashion be banned by law?",
+    "tags": ["9", "2"]
+  },
+  {
+    "id": "22",
+    "media": "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800",
+    "question": "Is training with an app as good as having a personal trainer?",
+    "tags": ["2", "5"]
+  },
+  {
+    "id": "23",
+    "media": "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800",
+    "question": "Do influencers have too much power over young people?",
+    "tags": ["3", "4"]
+  },
+  {
+    "id": "24",
+    "media": "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800",
+    "question": "Is space exploration really a priority?",
+    "tags": ["4", "5"]
+  },
+  {
+    "id": "25",
+    "media": "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=800",
+    "question": "Are creative AIs like DALL·E or ChatGPT destroying human creativity?",
+    "tags": ["5", "3"]
+  },
+
+
+
+
+
+  
+  {
+    "id": "26",
+    "media": "https://images.unsplash.com/photo-1508385082359-f38ae991e8f2?w=800",
+    "question": "Will robots ever develop their own form of emotions?",
+    "tags": ["5", "10"]
+  },
+  {
+    "id": "27",
+    "media": "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=800",
+    "question": "Is sleep overrated compared to nutrition and exercise?",
+    "tags": ["2", "3"]
+  },
+  {
+    "id": "28",
+    "media": "https://images.unsplash.com/photo-1493238792000-8113da705763?w=800",
+    "question": "Are electric cars truly better for the environment in the long run?",
+    "tags": ["4", "10"]
+  },
+  {
+    "id": "29",
+    "media": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800",
+    "question": "Is the education system preparing us for a world that no longer exists?",
+    "tags": ["3", "4"]
+  },
+  {
+    "id": "30",
+    "media": "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800",
+    "question": "Will virtual reality become more meaningful than physical reality?",
+    "tags": ["5", "3"]
+  },
+  {
+    "id": "31",
+    "media": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=800",
+    "question": "Is minimalism actually making people happier or just trendy?",
+    "tags": ["3", "9"]
+  },
+  {
+    "id": "32",
+    "media": "https://images.unsplash.com/photo-1507146426996-ef05306b995a?w=800",
+    "question": "Are pets becoming replacements for human relationships?",
+    "tags": ["3", "2"]
+  },
+  {
+    "id": "33",
+    "media": "https://images.unsplash.com/photo-1533750349088-cd871a92f312?w=800",
+    "question": "Will cities eventually ban private cars completely?",
+    "tags": ["4", "10"]
+  },
+  {
+    "id": "34",
+    "media": "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800",
+    "question": "Is the 4-day workweek the future or an unrealistic dream?",
+    "tags": ["10", "3"]
+  },
+  {
+    "id": "35",
+    "media": "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800",
+    "question": "Do video games improve thinking more than school subjects?",
+    "tags": ["3", "5"]
+  },
+  {
+    "id": "36",
+    "media": "https://images.unsplash.com/photo-1510511459019-5dda7724fd87?w=800",
+    "question": "Is privacy a myth in the digital age?",
+    "tags": ["5", "4"]
+  },
+  {
+    "id": "37",
+    "media": "https://images.unsplash.com/photo-1672583460736-05f8d6f74a09?w=800",
+    "question": "Will AI assistants become more trusted than human experts?",
+    "tags": ["5", "10"]
+  },
+  {
+    "id": "38",
+    "media": "https://images.unsplash.com/photo-1517976487492-5750f3195933?w=800",
+    "question": "Are UFO sightings just misunderstood technology?",
+    "tags": ["4", "5"]
+  },
+  {
+    "id": "39",
+    "media": "https://images.unsplash.com/photo-1517430816045-df4b7de11d1d?w=800",
+    "question": "Is multitasking actually reducing our intelligence?",
+    "tags": ["2", "3"]
+  },
+  {
+    "id": "40",
+    "media": "https://images.unsplash.com/photo-1473920542530-01c7be1de9ff?w=800",
+    "question": "Will humanity ever become a multi-planet civilization?",
+    "tags": ["5", "4"]
+  },
+  {
+    "id": "41",
+    "media": "https://images.unsplash.com/photo-1532957043147-6d663eb60349?w=800",
+    "question": "Is happiness more about mindset than life circumstances?",
+    "tags": ["3", "2"]
+  },
+  {
+    "id": "42",
+    "media": "https://images.unsplash.com/photo-1520975918319-59a4f1a6f0c7?w=800",
+    "question": "Are modern relationships becoming too fragile?",
+    "tags": ["3"]
+  },
+  {
+    "id": "43",
+    "media": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800",
+    "question": "Is friendship harder to maintain in the digital era?",
+    "tags": ["3", "4"]
+  },
+  {
+    "id": "44",
+    "media": "https://images.unsplash.com/photo-1528825871115-3581a5387919?w=800",
+    "question": "Will food made in labs replace traditional farming?",
+    "tags": ["1", "4"]
+  },
+  {
+    "id": "45",
+    "media": "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800",
+    "question": "Does money really buy freedom, not happiness?",
+    "tags": ["10", "3"]
+  },
+  {
+    "id": "46",
+    "media": "https://images.unsplash.com/photo-1521412644187-c49fa049e84d?w=800",
+    "question": "Is competitive sport more unhealthy than we admit?",
+    "tags": ["6", "2"]
+  },
+  {
+    "id": "47",
+    "media": "https://images.unsplash.com/photo-1499744937866-d7e566a20a61?w=800",
+    "question": "Is cancel culture a necessary correction or an overreaction?",
+    "tags": ["4", "3"]
+  },
+  {
+    "id": "48",
+    "media": "https://images.unsplash.com/photo-1518546305927-5a555bb7020f?w=800",
+    "question": "Are cryptocurrencies here to stay or just a long bubble?",
+    "tags": ["10", "5"]
+  },
+  {
+    "id": "49",
+    "media": "https://images.unsplash.com/photo-1529070538774-1843cb3265df?w=800",
+    "question": "Will climate migration reshape countries in the next decades?",
+    "tags": ["4", "7"]
+  },
+  {
+    "id": "50",
+    "media": "https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?w=800",
+    "question": "Is nostalgia making the past seem better than it was?",
+    "tags": ["3", "4"]
+  }
+]
+

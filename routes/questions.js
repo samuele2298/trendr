@@ -7,13 +7,19 @@ const db = require('../db');
 const fs = require('fs');
 const path = require('path');
 
+// Fisher-Yates shuffle (in-place). Use with a shallow copy if you want non-destructive shuffling.
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
 // GET tutte le questions con paginazione
 router.get('/', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
-    const offset = (page - 1) * limit;
-
     const queryQ = `
       SELECT
           q.id,
@@ -26,8 +32,6 @@ router.get('/', async (req, res) => {
       ORDER BY q.id;
     `;
     const allQuestions = await db.any(queryQ);
-    const total = allQuestions.length;
-    const questions = allQuestions.slice(offset, offset + limit);
 
     const queryT = `
       SELECT
@@ -49,7 +53,7 @@ router.get('/', async (req, res) => {
     `;
     const allVotes = await db.any(queryV);
     
-    const questionsWithTags = questions.map(question => {
+    const questionsWithTags = allQuestions.map(question => {
       const questionTags = question.tags.map(tagId => 
         tags.find(tag => tag.id === tagId)
       ).filter(tag => tag !== undefined);
@@ -75,17 +79,12 @@ router.get('/', async (req, res) => {
       };
     });
 
+    // Restituisci le domande in ordine casuale (non-destructive): shuffliamo una copia
+    const shuffledQuestions = shuffleArray(questionsWithTags.slice());
+
     res.status(200).json({ 
       success: true, 
-      data: questionsWithTags,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasNext: offset + limit < total,
-        hasPrev: page > 1
-      }
+      data: shuffledQuestions,
     });
   } catch (error) {
     logger.error('getQuestions:', error);

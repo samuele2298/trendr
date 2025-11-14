@@ -1,0 +1,52 @@
+[
+  {
+    "id": "1",
+    "name": "food",
+    "color": "#FF9500"
+  },
+  {
+    "id": "2",
+    "name": "health",
+    "color": "#34C759"
+  },
+  {
+    "id": "3",
+    "name": "lifestyle",
+    "color": "#AF52DE"
+  },
+  {
+    "id": "4",
+    "name": "trending",
+    "color": "#007AFF"
+  },
+  {
+    "id": "5",
+    "name": "technology",
+    "color": "#5856D6"
+  },
+  {
+    "id": "6",
+    "name": "sports",
+    "color": "#FF3B30"
+  },
+  {
+    "id": "7",
+    "name": "travel",
+    "color": "#FF9500"
+  },
+  {
+    "id": "8",
+    "name": "music",
+    "color": "#FF2D92"
+  },
+  {
+    "id": "9",
+    "name": "fashion",
+    "color": "#8E8E93"
+  },
+  {
+    "id": "10",
+    "name": "business",
+    "color": "#32D74B"
+  }
+]

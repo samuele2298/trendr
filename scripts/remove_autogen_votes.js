@@ -8,32 +8,18 @@ const initOptions = {
     }
 };
 const pgp = require('pg-promise')(initOptions);
-const dbconnString = process.env.DB;
+const dbconnString = "postgresql://postgres:postgres@64.226.93.50:5432/trendr";
 const db = pgp({connectionString: dbconnString, application_name: process.env.APP_NAME, max: 5, ssl: {rejectUnauthorized: false}});
-
-function backupVotesFile(votesPath) {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const bakPath = `${votesPath}.${timestamp}.bak`;
-  try {
-    if (fs.existsSync(votesPath)) {
-      fs.copyFileSync(votesPath, bakPath);
-    }
-    return bakPath;
-  } catch (error) {
-    console.error('Failed to create backup:', error.message);
-    return null;
-  }
-}
 
 async function main() {
   try {
     console.log('Reading votes from database...');
 
-    // Get count of autogen votes
+    // Get count of autogen votes (match on userid column)
     const autogenCount = await db.one(`
       SELECT COUNT(*) as count
       FROM "Tvote"
-      WHERE "Tvote_user" LIKE 'autogen_%'
+      WHERE "Tvote_userid" LIKE 'autogen_%'
     `);
 
     console.log(`Found ${autogenCount.count} autogen votes to remove`);
@@ -46,7 +32,9 @@ async function main() {
     // Create a backup by exporting current votes to JSON (optional but good practice)
     console.log('Creating backup of current votes...');
     const allVotes = await db.any(`
-      SELECT "Tvote_Tquestion_id", "Tvote_user", "Tvote_vote", "Tvote_createtime", interests, age, gender, sector, location
+      SELECT "Tvote_Tquestion_id", "Tvote_userid" as userid, "Tvote_vote" as vote, "Tvote_createtime" as createtime,
+             "Tvote_userinterest" as interests, "Tvote_userage" as age, "Tvote_usergender" as gender,
+             "Tvote_usersector" as sector, "Tvote_userlocation" as location
       FROM "Tvote"
       ORDER BY "Tvote_createtime" DESC
     `);
@@ -65,7 +53,7 @@ async function main() {
     console.log('Removing autogen votes...');
     const deleteResult = await db.result(`
       DELETE FROM "Tvote"
-      WHERE "Tvote_user" LIKE 'autogen_%'
+      WHERE "Tvote_userid" LIKE 'autogen_%'
     `);
 
     console.log(`Removed ${deleteResult.rowCount} autogen votes`);
