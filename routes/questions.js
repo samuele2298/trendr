@@ -278,15 +278,15 @@ router.post('/:id', async (req, res) => {
       );
 
       // Proviamo a risolvere il nome della location dal DB `cities`
-      let locationTitle = "Tua Zona";
-      let locationDescription = "Utenti della tua stessa area geografica";
+      let locationTitle = "Your Area";
+      let locationDescription = "Users in your same geographic area";
       try {
         const city = db.findById('cities', user.location);
         if (city) {
           // city può avere campi `nome` o `name`
           const cityName = city.nome || city.name || city.title || String(user.location);
           locationTitle = cityName;
-          locationDescription = `Utenti di ${cityName}`;
+          locationDescription = `Users in the area of ${cityName}`;
         }
       } catch (e) {
         // fallback: lascia i testi di default
@@ -303,14 +303,14 @@ router.post('/:id', async (req, res) => {
       );
 
       // Proviamo a risolvere il nome della fascia dagli ages
-      let ageTitle = "Tua Età";
-      let ageDescription = `Utenti della fascia ${user.age} anni`;
+      let ageTitle = "Your Age";
+      let ageDescription = `Users in the age range ${user.age} years`;
       try {
         const ageEntry = db.findById('ages', user.age);
         if (ageEntry && (ageEntry.name || ageEntry.nome)) {
           const ageName = ageEntry.name || ageEntry.nome;
-          ageTitle = `Fascia ${ageName}`;
-          ageDescription = `Utenti della fascia ${ageName}`;
+          ageTitle = `Range ${ageName}`;
+          ageDescription = `Users del range ${ageName}`;
         }
       } catch (e) {}
 
@@ -332,7 +332,7 @@ router.post('/:id', async (req, res) => {
         if (sectorEntry && (sectorEntry.name || sectorEntry.title)) {
           const sectorName = sectorEntry.name || sectorEntry.title;
           sectorTitle = sectorName;
-          sectorDescription = `Utenti di ${sectorName}`;
+          sectorDescription = `Users in the sector ${sectorName}`;
         }
       } catch (e) {}
 
@@ -347,14 +347,14 @@ router.post('/:id', async (req, res) => {
       );
 
       // Risolviamo il nome del genere dal DB `gender`
-      let genderTitle = "Tuo Genere";
-      let genderDescription = "Utenti del tuo stesso genere";
+      let genderTitle = "Your Gender";
+      let genderDescription = "Users of your same gender";
       try {
         const genderEntry = db.findById('gender', user.gender);
         if (genderEntry && (genderEntry.name || genderEntry.title)) {
           const genderName = genderEntry.name || genderEntry.title;
           genderTitle = genderName;
-          genderDescription = `Utenti di genere ${genderName}`;
+          genderDescription = `Users of gender ${genderName}`;
         }
       } catch (e) {}
 
@@ -401,7 +401,7 @@ router.post('/:id', async (req, res) => {
           const perInterestStats = calculateAllPeriods(
             filteredVotes,
             interestName,
-            `Utenti interessati a ${interestName}`,
+            `Users interested in ${interestName}`,
             "interests"
           );
           stats.push(perInterestStats);

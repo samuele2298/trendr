@@ -5,25 +5,19 @@ const router = express.Router();
 const logger = require('../logger');
 const db = require('../db');
 
-// Helper function per calcolare lo score di una question
+// Helper function per calcolare lo score di una question basato su consenso
 function calculateQuestionScore(questionId, votes) {
   const questionVotes = votes.filter(vote => vote.questionId == questionId);
   const totalVotes = questionVotes.length;
   
   if (totalVotes === 0) return 0;
   
-  const now = new Date();
-  let scoreSum = 0;
+  // Calcola score basato su consenso (positivi vs negativi)
+  const positives = questionVotes.filter(v => v.vote === 1).length;
+  const negatives = questionVotes.filter(v => v.vote === 0).length;
+  const consensusScore = ((positives - negatives) / totalVotes + 1) / 2;
   
-  questionVotes.forEach(vote => {
-    const voteTime = new Date(vote.time);
-    const hoursAgo = (now - voteTime) / (1000 * 60 * 60);
-    const timeDecay = Math.max(0, 1 - (hoursAgo / 24));
-    scoreSum += timeDecay;
-  });
-  
-  const maxPossibleScore = totalVotes;
-  return maxPossibleScore > 0 ? Math.min(1, scoreSum / maxPossibleScore) : 0;
+  return consensusScore;
 }
 
 // Helper function per generare testi automatici
@@ -33,18 +27,28 @@ function generateText(question, votes, score, type) {
   
   const templates = {
     trends: [
-      `📈 Trending della settimana: "${question}" - ${percentage}% di consenso con ${voteCount} voti!`,
-      `🔥 Hot topic: Solo il ${percentage}% è d'accordo su "${question}"`,
-      `⚡ Dibattito acceso: "${question}" divide l'opinione (${percentage}%)`,
-      `💬 Discussione calda: ${voteCount} persone hanno votato "${question}" con ${percentage}% di consenso`,
-      `🚀 Trend settimanale: "${question}" raggiunge il ${percentage}% di approvazione`
+      `📈 Weekly trending: "${question}" - ${percentage}% consensus with ${voteCount} votes!`,
+      `🔥 Hot topic: Only ${percentage}% agree on "${question}"`,
+      `⚡ Heated debate: "${question}" splits opinions (${percentage}%)`,
+      `💬 Hot discussion: ${voteCount} people voted on "${question}" with ${percentage}% consensus`,
+      `🚀 Weekly trend: "${question}" reaches ${percentage}% approval`,
+      `🌟 Trending now: "${question}" has ${percentage}% agreement from ${voteCount} voters`,
+      `💥 Viral question: "${question}" sparks debate with ${percentage}% consensus`,
+      `📊 This week's buzz: "${question}" - ${percentage}% approval rate`,
+      `🎯 Trending topic: ${voteCount} votes on "${question}" show ${percentage}% agreement`,
+      `🔥 Breaking: "${question}" trending with ${percentage}% consensus`
     ],
     today: [
-      `📊 Risultato del giorno: "${question}" - ${percentage}% dopo ${voteCount} voti oggi`,
-      `⏰ Nelle ultime 24h: "${question}" ha ottenuto ${percentage}% di consenso`,
-      `🎯 Focus oggi: Solo il ${percentage}% supporta "${question}"`,
-      `📈 Oggi si parla di: "${question}" (${percentage}% favorevoli)`,
-      `💡 Insight giornaliero: "${question}" divide con ${percentage}% di sì`
+      `📊 Today's result: "${question}" - ${percentage}% after ${voteCount} votes today`,
+      `⏰ In the last 24h: "${question}" got ${percentage}% consensus`,
+      `🎯 Today's focus: Only ${percentage}% support "${question}"`,
+      `📈 Today's talk: "${question}" (${percentage}% in favor)`,
+      `💡 Daily insight: "${question}" divides with ${percentage}% yes`,
+      `🌅 Morning buzz: "${question}" has ${percentage}% agreement today`,
+      `⚡ Today's hot take: ${voteCount} votes on "${question}" - ${percentage}% consensus`,
+      `📈 Daily trend: "${question}" reaches ${percentage}% approval in 24h`,
+      `🎯 24h highlight: "${question}" with ${percentage}% agreement`,
+      `💬 Today's debate: ${voteCount} people weighed in on "${question}" (${percentage}%)`
     ]
   };
   

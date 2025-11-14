@@ -3,6 +3,7 @@
 const logger = require('./logger');
 const express = require('express');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const cors = require('cors');
 
@@ -47,6 +48,34 @@ const main = async () => {
 
     // Trust proxy (es. per rate limiting, cors dietro reverse proxy)
     app.set('trust proxy', 1);
+
+    // Rate limiting: generale - 100 richieste per 15 minuti per IP
+    const generalLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minuti
+        max: 100, // limite di 100 richieste per finestra
+        message: {
+            success: false,
+            error: 'Too many requests from this IP, please try again later.'
+        },
+        standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+        legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    });
+
+    // Rate limiting: stretto - 10 richieste per 1 secondo per IP
+    const strictLimiter = rateLimit({
+        windowMs: 1000, // 1 secondo
+        max: 10, // limite di 10 richieste per finestra
+        message: {
+            success: false,
+            error: 'Too many requests from this IP in a short time, please slow down.'
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+    });
+
+    // Applica i limiter a tutte le richieste
+    app.use(generalLimiter);
+    app.use(strictLimiter);
 
     // Middleware: log GET/POST requests with response time, status code and endpoint
     app.use((req, res, next) => {
