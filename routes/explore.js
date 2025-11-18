@@ -7,7 +7,7 @@ const db = require('../db');
 
 // Helper function per calcolare lo score di una question basato su consenso
 function calculateQuestionScore(questionId, votes) {
-  const questionVotes = votes.filter(vote => vote.questionId == questionId);
+  const questionVotes = votes.filter(vote => vote.qid == questionId);
   const totalVotes = questionVotes.length;
   
   if (totalVotes === 0) return 0;
