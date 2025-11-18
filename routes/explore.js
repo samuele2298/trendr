@@ -75,7 +75,8 @@ router.get('/trends', async (req, res, next) => {
     `;
     const questions = await db.any(queryQ);
         
-    const queryV = `
+    // Query per voti recenti (ultima settimana) - per contare
+    const queryVRecent = `
       SELECT
           "Tvote_Tquestion_id" qid,
           "Tvote_vote" vote,
@@ -84,32 +85,37 @@ router.get('/trends', async (req, res, next) => {
       WHERE "Tvote_createtime" >= $1
       ORDER BY "Tvote_Tquestion_id";
     `;
-    const allVotes = await db.any(queryV, [oneWeekAgo]);
+    const recentVotes = await db.any(queryVRecent, [oneWeekAgo]);
     
-    // Filtra voti dell'ultima settimana
-    const weekVotes = allVotes.filter(vote => {
-      const voteDate = new Date(vote.time);
-      return voteDate >= oneWeekAgo;
-    });
+    // Query per tutti i voti - per calcolare score totale
+    const queryVAll = `
+      SELECT
+          "Tvote_Tquestion_id" qid,
+          "Tvote_vote" vote,
+          "Tvote_createtime" time
+      FROM "Tvote"
+      ORDER BY "Tvote_Tquestion_id";
+    `;
+    const allVotes = await db.any(queryVAll);
     
-    // Calcola score per ogni question
+    // Calcola numero di voti recenti e score totale per ogni question
     const questionStats = questions.map(question => {
-      const questionVotes = weekVotes.filter(vote => vote.qid == question.id);
-      const score = calculateQuestionScore(question.id, weekVotes);
+      const recentQuestionVotes = recentVotes.filter(vote => vote.qid == question.id);
+      const score = calculateQuestionScore(question.id, allVotes); // score su tutti i voti
       
       return {
         question,
-        votes: questionVotes.length,
+        recentVotes: recentQuestionVotes.length,
         score: Math.round(score * 100) / 100
       };
     });
     
-    // Filtra solo questions con voti e ordina per numero di voti (più votate prima)
+    // Filtra solo questions con voti recenti e ordina per numero di voti recenti (più votate prima)
     // Tie-breaker: score più alto prima
     const trendingQuestions = questionStats
-      .filter(item => item.votes > 0)
+      .filter(item => item.recentVotes > 0)
       .sort((a, b) => {
-        if (b.votes !== a.votes) return b.votes - a.votes;
+        if (b.recentVotes !== a.recentVotes) return b.recentVotes - a.recentVotes;
         return b.score - a.score;
       })
       .slice(0, 3);
@@ -117,9 +123,9 @@ router.get('/trends', async (req, res, next) => {
     // Crea highlights
     const highlights = trendingQuestions.map(item => ({
       qid: item.question.id,
-      text: generateText(item.question.question, item.votes, item.score, 'trends'),
+      text: generateText(item.question.question, item.recentVotes, item.score, 'trends'),
       tagsIds: item.question.tags,
-      votes: item.votes,
+      votes: item.recentVotes,
       score: item.score
     }));
     
@@ -129,7 +135,7 @@ router.get('/trends', async (req, res, next) => {
       meta: {
         period: 'last_week',
         totalAnalyzed: questions.length,
-        withVotes: questionStats.filter(q => q.votes > 0).length
+        withRecentVotes: questionStats.filter(q => q.recentVotes > 0).length
       }
     });
     
@@ -158,7 +164,8 @@ router.get('/today', async (req, res, next) => {
     `;
     const questions = await db.any(queryQ);
         
-    const queryV = `
+    // Query per voti recenti (ultime 24h) - per contare
+    const queryVRecent = `
       SELECT
           "Tvote_Tquestion_id" qid,
           "Tvote_vote" vote,
@@ -167,22 +174,27 @@ router.get('/today', async (req, res, next) => {
       WHERE "Tvote_createtime" >= $1
       ORDER BY "Tvote_Tquestion_id";
     `;
-    const allVotes = await db.any(queryV, [twentyFourHoursAgo]);
+    const recentVotes = await db.any(queryVRecent, [twentyFourHoursAgo]);
     
-    // Filtra voti delle ultime 24h
-    const todayVotes = allVotes.filter(vote => {
-      const voteDate = new Date(vote.time);
-      return voteDate >= twentyFourHoursAgo;
-    });
+    // Query per tutti i voti - per calcolare score totale
+    const queryVAll = `
+      SELECT
+          "Tvote_Tquestion_id" qid,
+          "Tvote_vote" vote,
+          "Tvote_createtime" time
+      FROM "Tvote"
+      ORDER BY "Tvote_Tquestion_id";
+    `;
+    const allVotes = await db.any(queryVAll);
     
-    // Calcola score per ogni question
+    // Calcola numero di voti recenti e score totale per ogni question
     const questionStats = questions.map(question => {
-      const questionVotes = todayVotes.filter(vote => vote.qid == question.id);
-      const score = calculateQuestionScore(question.id, todayVotes);
+      const recentQuestionVotes = recentVotes.filter(vote => vote.qid == question.id);
+      const score = calculateQuestionScore(question.id, allVotes); // score su tutti i voti
       
       return {
         question,
-        votes: questionVotes.length,
+        recentVotes: recentQuestionVotes.length,
         score: Math.round(score * 100) / 100
       };
     });
@@ -190,9 +202,9 @@ router.get('/today', async (req, res, next) => {
     // Filtra solo questions con voti oggi e ordina per numero di voti (più votate prima)
     // Tie-breaker: score più alto prima
     const todayQuestions = questionStats
-      .filter(item => item.votes > 0)
+      .filter(item => item.recentVotes > 0)
       .sort((a, b) => {
-        if (b.votes !== a.votes) return b.votes - a.votes;
+        if (b.recentVotes !== a.recentVotes) return b.recentVotes - a.recentVotes;
         return b.score - a.score;
       })
       .slice(0, 3);
@@ -200,9 +212,9 @@ router.get('/today', async (req, res, next) => {
     // Crea highlights
     const highlights = todayQuestions.map(item => ({
       qid: item.question.id,
-      text: generateText(item.question.question, item.votes, item.score, 'today'),
+      text: generateText(item.question.question, item.recentVotes, item.score, 'today'),
       tagsIds: item.question.tags,
-      votes: item.votes,
+      votes: item.recentVotes,
       score: item.score
     }));
     
@@ -212,7 +224,7 @@ router.get('/today', async (req, res, next) => {
       meta: {
         period: 'last_24h',
         totalAnalyzed: questions.length,
-        withVotesToday: questionStats.filter(q => q.votes > 0).length
+        withRecentVotes: questionStats.filter(q => q.recentVotes > 0).length
       }
     });
     
